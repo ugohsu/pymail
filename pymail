@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+
+## パッケージの読み込み
+
+# メール本文の作成
+from email.mime.text import MIMEText
+
+# 添付ファイルの読み込み
+from email.mime.application import MIMEApplication
+
+# 添付ファイルの結合
+from email.mime.multipart import MIMEMultipart
+
+# その他のパッケージ
+import sys, os, re, json, smtplib, gnupg
+
+## 関数
+
+# contents を送信先等の情報と本文とに分割する
+def parseContents(contents):
+
+    # メールのメッセージの作成
+    msg = MIMEMultipart()
+
+    # 情報と本文の分割点
+    seprow = contents.index("\n")
+
+    # 本文の追加
+    msg.attach(MIMEText("".join(contents[(seprow + 1):])))
+
+    # 情報の取得
+    info = [x.strip() for x in contents[:seprow]]
+
+    for x in info:
+        if re.match(r"^To: ", x):
+            msg["To"] = re.sub(r"^To: ", "", x)
+        elif re.match(r"^Cc: ", x):
+            msg["Cc"] = re.sub(r"^Cc: ", "", x)
+        elif re.match(r"^Bcc: ", x):
+            msg["Bcc"] = re.sub(r"^Bcc: ", "", x)
+        elif re.match(r"^Subject: ", x):
+            msg["Subject"] = re.sub(r"^Subject: ", "", x)
+        elif re.match(r"^File: ", x):
+            # 複数ファイルの場合にはパスをコンマでつなぐ
+            fileList = re.sub(r"^File: ", "", x).split(",")
+            for fle in fileList:
+                # パスの補完
+                path = os.path.expanduser(fle)
+                base = os.path.basename(path)
+                # ファイルの取得
+                with open(path, "rb") as rf:
+                    part = MIMEApplication(
+                        rf.read(),
+                        Name = base
+                    )
+                # ファイル情報の整理 
+                part['Content-Disposition'] = \
+                    f'attachment; filename="{base}"'
+                # メッセージに追加
+                msg.attach(part)
+
+    return msg
+
+# メールアカウント情報の取得
+def getAccount():
+    
+    # 設定ファイルの読み込み
+    path = os.path.expanduser("~/controls/setting/mutt/pass/.pymailconf.json.gpg")
+    gpg = gnupg.GPG()
+    with open(path, "rb") as rf:
+        decrypted = gpg.decrypt_file(rf)
+        account = json.loads(decrypted.data.decode("utf8"))
+
+    return account
+
+# メールの送信
+def sendmail(account, msg):
+
+    # 送信元の入力
+    msg["From"] = account["from"]
+
+    # メールの送信
+    server = smtplib.SMTP(account["host"], account["port"])
+    server.starttls()
+    server.login(account["from"], account["password"])
+    server.send_message(msg)
+    server.quit()
+
+# 実行
+
+if __name__ == "__main__":
+
+    contents = [x for x in sys.stdin.readlines()]
+    msg = parseContents(contents)
+    account = getAccount()
+    sendmail(account, msg)
+    print(f'{msg["To"]} に「{msg["Subject"]}」を送信しました。')
