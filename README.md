@@ -4,9 +4,19 @@
 
 pymail -- メール送信スクリプト
 
-## SYNOPSIS
+## USAGE
 
-pymail contents
+```
+usage: pymail [-h] [--file FILE] [--config CONFIG]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --file FILE, -f FILE  メールの情報 (宛先など) および本文に関するファイルを指定する
+  --config CONFIG, -c CONFIG
+                        config ファイル (gnupg で暗号化された json ファイル) を指定する (デフォルトは
+                        ~/.pymailconf)
+```
+
 
 ## DESCRIPTION
 
@@ -28,4 +38,4 @@ File: filepath
 ~/controls/setting/mutt/pass/.pymailconf.json.gpg
 に設置する。
 
-To, Cc, Bcc, Path については、メールアドレスをコンマで区切ることによって複数アドレスを対象にすることができる。
+To, Cc, Bcc, File については、コンマで区切ることによって複数の要素を対象にすることができる。

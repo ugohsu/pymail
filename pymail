@@ -12,7 +12,7 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 
 # その他のパッケージ
-import sys, os, re, json, smtplib, gnupg
+import sys, os, re, json, smtplib, gnupg, argparse
 
 ## 関数
 
@@ -45,7 +45,7 @@ def parseContents(contents):
             fileList = re.sub(r"^File: ", "", x).split(",")
             for fle in fileList:
                 # パスの補完
-                path = os.path.expanduser(fle)
+                path = os.path.abspath(os.path.expanduser(fle))
                 base = os.path.basename(path)
                 # ファイルの取得
                 with open(path, "rb") as rf:
@@ -62,10 +62,10 @@ def parseContents(contents):
     return msg
 
 # メールアカウント情報の取得
-def getAccount():
+def getAccount(path):
     
     # 設定ファイルの読み込み
-    path = os.path.expanduser("~/controls/setting/mutt/pass/.pymailconf.json.gpg")
+    path = os.path.expanduser(path)
     gpg = gnupg.GPG()
     with open(path, "rb") as rf:
         decrypted = gpg.decrypt_file(rf)
@@ -86,12 +86,44 @@ def sendmail(account, msg):
     server.send_message(msg)
     server.quit()
 
-# 実行
+## 実行
 
 if __name__ == "__main__":
 
-    contents = [x for x in sys.stdin.readlines()]
+    # 引数の設定
+    p = argparse.ArgumentParser()
+
+    # contents file
+    p.add_argument(
+        "--file", "-f",
+        default = None,
+        help = "メールの情報 (宛先など) および本文に関するファイルを指定する"
+    )
+
+    # config file path
+    p.add_argument(
+        "--config", "-c",
+        default = "~/.pymailconf",
+        help = "config ファイル (gnupg で暗号化された json ファイル) を指定する (デフォルトは ~/.pymailconf)"
+    )
+
+    args = p.parse_args()
+
+    # contents の読み込み
+    if args.file:
+        with open(args.file, "r") as rf:
+            contents = rf.readlines()
+    else:
+        contents = sys.stdin.readlines()
+
+    # メッセージの作成
     msg = parseContents(contents)
-    account = getAccount()
+
+    # アカウント情報の読み込み
+    account = getAccount(args.config)
+
+    # メールの送信
     sendmail(account, msg)
+
+    # 送信情報の表示
     print(f'{msg["To"]} に「{msg["Subject"]}」を送信しました。')
