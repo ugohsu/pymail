@@ -35,7 +35,7 @@ File: filepath
 などのように記載する。To: などの指示と本文との間には 1 行の空白行を入れておく。
 
 メールアカウント等の設定ファイルは
-~/controls/setting/mutt/pass/.pymailconf.json.gpg
+~/controls/setting/mutt/pass/.pymailconf.si.json.gpg
 に設置する。
 
 To, Cc, Bcc, File については、コンマで区切ることによって複数の要素を対象にすることができる。
