@@ -74,7 +74,7 @@ def getAccount(path):
     return account
 
 # メールの送信
-def sendmail(account, msg):
+def sendMail(account, msg):
 
     # 送信元の入力
     msg["From"] = account["from"]
@@ -86,6 +86,12 @@ def sendmail(account, msg):
     server.send_message(msg)
     server.quit()
 
+# contents が含まれるファイルを開く関数
+def openFiles(paths):
+    for path in paths:
+        with open(path, "r") as rf:
+            yield rf.readlines()
+
 ## 実行
 
 if __name__ == "__main__":
@@ -96,6 +102,7 @@ if __name__ == "__main__":
     # contents file
     p.add_argument(
         "--file", "-f",
+        nargs = "+",  # 複数ファイルをリストの形で受け取る
         default = None,
         help = "メールの情報 (宛先など) および本文に関するファイルを指定する"
     )
@@ -109,21 +116,23 @@ if __name__ == "__main__":
 
     args = p.parse_args()
 
-    # contents の読み込み
-    if args.file:
-        with open(args.file, "r") as rf:
-            contents = rf.readlines()
-    else:
-        contents = sys.stdin.readlines()
-
-    # メッセージの作成
-    msg = parseContents(contents)
-
     # アカウント情報の読み込み
     account = getAccount(args.config)
 
-    # メールの送信
-    sendmail(account, msg)
+    # contents の読み込み
+    if args.file:
+        contentsList = openFiles(args.file)
+    else:
+        contentsList = [sys.stdin.readlines()]
 
-    # 送信情報の表示
-    print(f'{msg["To"]} に「{msg["Subject"]}」を送信しました。')
+    # file に指定したすべてのメールを送信する
+    for contents in contentsList:
+
+        # メッセージの作成
+        msg = parseContents(contents)
+
+        # メールの送信
+        sendMail(account, msg)
+
+        # 送信情報の表示
+        print(f'{msg["To"]} に「{msg["Subject"]}」を送信しました。')
