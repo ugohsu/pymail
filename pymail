@@ -12,7 +12,7 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 
 # その他のパッケージ
-import sys, os, re, json, smtplib, gnupg, argparse
+import sys, os, re, json, smtplib, gnupg, argparse, subprocess
 
 ## 関数
 
@@ -68,8 +68,13 @@ def getAccount(path):
     path = os.path.expanduser(path)
     gpg = gnupg.GPG()
     with open(path, "rb") as rf:
-        decrypted = gpg.decrypt_file(rf)
-        account = json.loads(decrypted.data.decode("utf8"))
+        decrypted = gpg.decrypt_file(rf).data
+
+        # decrypted が空の場合には直接 "gpg -d" を呼び出す
+        if not decrypted:
+            decrypted = subprocess.run(["gpg", "-d", path], capture_output = True).stdout
+            
+        account = json.loads(decrypted.decode("utf8"))
 
     return account
 
